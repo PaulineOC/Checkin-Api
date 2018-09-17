@@ -19,4 +19,22 @@ function hashPassword(inputPswd, saltRounds){
 	});
 }
 
+/*
+* Input:  string of input password, hashed passowrd
+* Output: Promise where the resolve passes along boolean 
+	if the hashed password matches the hash of the inputted password
+* General: An inputted password is hashed and compared to hash. Returns Promise to handle both outcomes
+*/
+function comparePasswords(pswdAttmpt, currHash){
+	return new Promise((resolve, reject)=>{
+		bcrypt.compare(pswdAttmpt, currHash, (err, res)=> {
+			if(err){
+				reject(err);
+			}
+			resolve(res);
+		});
+	});
+}
+
 exports.hashPassword = hashPassword;
+exports.comparePasswords = comparePasswords;
