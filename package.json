@@ -1,0 +1,28 @@
+{
+  "name": "check-in_api",
+  "version": "1.0.0",
+  "description": "Check-In API",
+  "main": "app.js",
+  "scripts": {
+    "test": "mocha",
+    "watch": "nodemon app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PaulineOC/TQ-BE-2018728.git"
+  },
+  "author": "Pauline",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PaulineOC/TQ-BE-2018728/issues"
+  },
+  "homepage": "https://github.com/PaulineOC/TQ-BE-2018728#readme",
+  "devDependencies": {
+    "mocha": "^5.2.0",
+    "nodemon": "^1.18.4"
+  },
+  "dependencies": {
+    "express": "^4.16.3",
+    "mongoose": "^5.2.15"
+  }
+}
