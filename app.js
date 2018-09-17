@@ -16,6 +16,31 @@ var allVenuesDB = mongoose.model('VenueSchema');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
+/*
+* Input:  Req, Res object, next function
+* Output: Error OR calls next() function 
+* General :  Checks if the session ID stored in a cookie
+	exists in any user's sessionToken array.
+	If exists: set attach the user to the request obj
+	If not: throw error
+*/
+app.use((req, res, next)=>{
+	if(req.cookies['session-id']){
+		User.findOne({'sessionTokens': req.cookies['session-id']},(err, user)=>{
+			if(err || !user){
+				console.log("error - no user OR err");
+			}
+			else{
+				req.user = user;
+				next();
+			}
+		});
+	}
+	else{
+		//let err = new Error();
+		console.log("need to be logged in");
+	}
+});
 
 
 // unauthenticated endpoints
@@ -109,13 +134,43 @@ app.post('/api/login', (req, res)=>{
 	}
 });
 
-
-app.use((req, res, next)=>{
-	
-});
-
 // authenticated endpoints
+
+
+/*
+* Input:  user's longitude and user's latitude passed through request object
+* Output: Status & (if successful: list of venue objects) (if unsuccessful: err)
+* General: 
+	1. Queries DB to find all venues within 5km of the user's lon and lat coords
+	2. Returns error if there is any
+	3. OR Returns list of venues objects mapped to include fields: ID, name, coordinates
+*/
 app.get('/api/NearByVenues', (req,res)=>{
+	allVenuesDB.find({
+  		'location': {
+   			$nearSphere: {
+    			$maxDistance: 5000,
+    			$geometry: {
+     				type: "Point",
+     				'coordinates': [req.query.longitude, req.query.latitude]
+    			}
+   			}
+  		}
+ 	}, (err, venues) => {
+ 		if(err){
+ 			console.log(err);
+ 		}
+ 		res.json({
+ 			'venues': venues.map((ele)=>{
+ 				return {
+ 					'id': ele._id,
+ 					'name': ele.name,
+ 					'longitude': ele.location.coordinates[0],
+ 					'latitude': ele.location.coordinates[1], 
+ 				}
+ 			}),
+ 		});
+ 	});
 });
 
 app.post('/api/checkIn',(req,res)=>{	
