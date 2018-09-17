@@ -16,31 +16,7 @@ var allVenuesDB = mongoose.model('VenueSchema');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
-/*
-* Input:  Req, Res object, next function
-* Output: Error OR calls next() function 
-* General :  Checks if the session ID stored in a cookie
-	exists in any user's sessionToken array.
-	If exists: set attach the user to the request obj
-	If not: throw error
-*/
-app.use((req, res, next)=>{
-	if(req.cookies['session-id']){
-		User.findOne({'sessionTokens': req.cookies['session-id']},(err, user)=>{
-			if(err || !user){
-				console.log("error - no user OR err");
-			}
-			else{
-				req.user = user;
-				next();
-			}
-		});
-	}
-	else{
-		//let err = new Error();
-		console.log("need to be logged in");
-	}
-});
+
 
 
 // unauthenticated endpoints
@@ -109,16 +85,19 @@ app.post('/api/login', (req, res)=>{
 				helper.comparePasswords(login.password,existingUser.password).then((doMatch)=>{
 					if(doMatch){
 						var sessionToken = uuidv4();
-						User.updateOne(existingUser, {$push: { sessionTokens: sessionToken }},
+						User.findByIdAndUpdate(existingUser._id, 
+							{$push: { 'sessionTokens': sessionToken }},
 							{new: true}, (err, newToken)=>{
 								if(err){
-									console.log('err');
-									res.send(err);
+									res.send("err");
 								}
 								res.cookie('session-id',sessionToken, { maxAge: 900000});
-								res.json({'status': 'set cookie!!!'});
+								res.json({
+									'status': 'set cookie!!!',
+									'user': newToken,
+								});
 							});
-					}
+					}//end of passwords match
 				})
 				.catch((err)=>{
 					console.log("'error in comparing hashes");
@@ -136,6 +115,33 @@ app.post('/api/login', (req, res)=>{
 
 // authenticated endpoints
 
+//Middleware: test authenticated user
+/*
+* Input:  Req, Res object, next function
+* Output: Error OR calls next() function 
+* General :  Checks if the session ID stored in a cookie
+	exists in any user's sessionToken array.
+	If exists: set attach the user to the request obj
+	If not: throw error
+*/
+app.use((req, res, next)=>{
+	//console.log(req.cookies['session-id']);
+	if(req.cookies['session-id']){
+		User.findOne({'sessionTokens': req.cookies['session-id']},(err, user)=>{
+			if(err || !user){
+				console.log("error - no user OR err");
+			}
+			else{
+				req.user = user;
+				next();
+			}
+		});
+	}
+	else{
+		//let err = new Error();
+		console.log("need to be logged in");
+	}
+});
 
 /*
 * Input:  user's longitude and user's latitude passed through request object
@@ -173,8 +179,68 @@ app.get('/api/NearByVenues', (req,res)=>{
  	});
 });
 
-app.post('/api/checkIn',(req,res)=>{	
+/*
+* Input:  user's longitude, user's latitude passed, 
+	venue's name, venue's longitude, venue's latitude via request object
+* Output: Status & (if successful: updated User) (if unsuccessful: err)
+* General: 
+	1. Queries venue DB to see if venue exists & if venue is within 1km of the user's coords
+	2. Returns error if any
+	3. OR Updates user's visited venue array with the venue (lon, lat, name)
+	4. Returns error if any OR returns updated User 
+*/
+app.post('/api/checkIn',(req,res)=>{
+	allVenuesDB.findOneAndUpdate(
+		{
+			$and: [
+				{'name': req.body.venueName},
+				{
+					'location': {
+			   			$nearSphere: {
+			    			$maxDistance: 1000,
+			    			$geometry: {
+			     				type: "Point",
+			     				'coordinates': [req.body.userLongitude, req.body.userLatitude]
+			    			}
+			   			}
+		  			}	
+				}
+			]
+		},
+		{$push: {'checkedInUsers': req.user.email}},
+		(err, venue)=> {
+			if(err || !venue){
+				console.log(err);
+			}
+			else{
+				User.findOneAndUpdate(
+					{ '_id' : req.user._id},
+					{$push: 
+						{'visitedVenues': 
+							{
+								'coordinates': [req.body.venueLongitude, req.body.venueLatitude],
+								'name': req.body.venueName,
+							}
+						}
+					},
+					(err, updatedUser)=>{
+						if(err || !updatedUser){
+							console.log(err);
+						}
+						else{
+							console.log('Added to visited venues');
+							//console.log(req.user.visitedVenues);
+							res.json({updatedUser});
+						}
+
+					}
+				);
+			 }
+		
+		}
+	);
 });
+
 
 app.get('/api/popularVenues',(req,res)=>{
 });

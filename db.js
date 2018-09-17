@@ -11,7 +11,13 @@ var User = new mongoose.Schema({
     type: String,
     required: true,
   },
-  visitedVenues: [String],
+  visitedVenues: [
+    {
+      time : { type : Number, default: Date.now },
+      coordinates: [Number],
+      name: String
+    }
+  ],
   sessionTokens: [String]
 });
 
