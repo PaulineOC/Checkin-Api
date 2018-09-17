@@ -240,8 +240,6 @@ app.post('/api/checkIn',(req,res)=>{
 		}
 	);
 });
-
-
 /*
 * Input:  none
 * Output: Status & (if successful: list of popular venues) (if unsuccessful: err)
@@ -278,10 +276,45 @@ app.get('/api/popularVenues',(req,res)=>{
 					console.log('success');
 					res.json(mapped);
 			});
-
 });
 
+/*
+* Input:  user's longitude and latitude coordinates via request object
+* Output: Status & (if successful: list of venues with field that has checked in users) 
+	(if unsuccessful: err)
+* General: 
+	1. Queries venue DB get all venues within 5km
+	2. Returns list of venues with its list of checked-in users  OR error
+* Note: I returned the venue object rather than just an array with users
+	 so that the front-end can keep track of which users are at which venue
+*/
 app.get('/api/nearByUsers',(req,res)=>{
+	allVenuesDB.find({
+  		'location': {
+   			$nearSphere: {
+    			$maxDistance: 5000,
+    			$geometry: {
+     				type: "Point",
+     				'coordinates': [req.query.longitude, req.query.latitude]
+    			}
+   			}
+  		}
+ 	}, (err, venues) => {
+ 		if(err){
+ 			console.log(err);
+ 		}
+ 		else{
+ 			let allUsers = venues.map((ele)=>{
+ 				return {
+ 					'name': ele.name,
+ 					'longitude':ele.location.coordinates[0],
+ 					'latitude': ele.location.coordinates[1],
+ 					'checkedInUsers': ele.checkedInUsers,
+ 				}
+ 			});
+ 			res.json(allUsers);
+ 		}
+ 	});
 });
 
 app.get('/api/suggestedVenue',(req,res)=>{
