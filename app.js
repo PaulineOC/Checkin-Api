@@ -242,7 +242,43 @@ app.post('/api/checkIn',(req,res)=>{
 });
 
 
+/*
+* Input:  none
+* Output: Status & (if successful: list of popular venues) (if unsuccessful: err)
+* General: 
+	1. Queries venue DB to see top 3 venues based on # of people checked in
+	2. Returns error if any
+	3. OR Returns a list of 3 most popular venues 
+*/
 app.get('/api/popularVenues',(req,res)=>{
+	allVenuesDB.aggregate(
+				[
+					{
+						"$project": {
+							"name": 1,
+							"location": 1,
+							"checkedInUsers": 1,
+							"length" : { "$size": "$checkedInUsers"}
+						}
+					},
+					{"$sort": {"length": -1}},
+					{"$limit": 3}
+				],(err, sortedVenues)=>{
+					let mapped = sortedVenues.map((ele)=>{
+						let len = ele.checkedInUsers.length;
+						return {
+							id: ele._id,
+							'name': ele.name,
+							'longitude': ele.location.coordinates[0],
+							'latitude': ele.location.coordinates[1],
+							'numCheckedIn': len,
+							'checkedInUsers': ele.checkedInUsers
+						};
+					});
+					console.log('success');
+					res.json(mapped);
+			});
+
 });
 
 app.get('/api/nearByUsers',(req,res)=>{
