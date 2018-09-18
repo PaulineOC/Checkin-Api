@@ -18,9 +18,6 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-
-
-
 //Data
 var allRestaurantsObj = require('./smallRestaurants.js');
 var allRestaurants = allRestaurantsObj.listSmallRest;
@@ -390,14 +387,14 @@ app.get('/addAllTestVenues', (req,res)=>{
  // Initialize the app
 
  // process.env.PORT lets the port be set by Heroku
-  var server = app.listen(process.env.PORT || 8080, function () {
-    var port = server.address().port;
-    console.log("App now running on port", port);
-  });
+  // var server = app.listen(process.env.PORT || 8080, function () {
+  //   var port = server.address().port;
+  //   console.log("App now running on port", port);
+  // });
 
 
 
 
-//app.listen(8080);
+app.listen(8080);
 
 
