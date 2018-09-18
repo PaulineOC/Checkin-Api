@@ -388,15 +388,3 @@ app.get('/addAllTestVenues', (req,res)=>{
 app.listen(8080);
 
 
-
-// when they checkin -> 
-// if checkins > 10: call unplugg api with all the info
-// else: make suggestedVenue the last venue they visited aka the current
-
-
-// define new endpoint thats a post
-// make sure only unplugg can make requests to it
-// Then find nearest venue to unpluggs response and store it in suggestedVenue
-
-// In suggestedVenue
-// simply return suggestedVenue

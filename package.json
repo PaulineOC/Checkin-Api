@@ -5,7 +5,8 @@
   "main": "app.js",
   "scripts": {
     "test": "mocha",
-    "watch": "nodemon app.js"
+    "watch": "nodemon app.js",
+    "start": "app.js"
   },
   "repository": {
     "type": "git",
