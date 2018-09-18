@@ -1,8 +1,8 @@
-//Helper Functions
-
-
 var bcrypt = require('bcrypt');
 var request = require('request');
+
+//Helper Functions
+
 
 /*
 * Input:  string of input password, and how many salt rounds (rounds of hashing)

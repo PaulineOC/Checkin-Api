@@ -23,7 +23,6 @@ var allRestaurantsObj = require('./smallRestaurants.js');
 var allRestaurants = allRestaurantsObj.listSmallRest;
 
 
-
 // unauthenticated endpoints
 
 /*
@@ -32,7 +31,7 @@ var allRestaurants = allRestaurantsObj.listSmallRest;
 * General: Checks if the user exists in the DB
 	If not hash password and saves credentials in DB
 */
-app.post('/api/register', (req, res) => {
+app.post('/api/register', (req, res, next) => {
 	if(req.body.email && req.body.password){
 		let credentials = req.body;
 		User.findOne({'email': credentials.email}, (err, existingUser)=>{
@@ -43,32 +42,36 @@ app.post('/api/register', (req, res) => {
 							email: credentials.email,
 							password: hashed,
 							visitedVenues: [],
-							suggestedVenue: '',
-							sessionTokens: [],
+							//suggestedVenue: '',
+							sessionTokens: []
 						})
 						.save((err, user)=>{
 							if(err){
-								console.log(err);
+								//console.log('trouble saving user');
+								next(err);
 							}
 							else{
-								console.log('successfully saved user');
+								//console.log('successfully saved user');
 								res.json(user);
 							}
 						});
 					})
 					.catch((err)=>{
-						console.log(err);
-						res.json(err);
+						//console.log('trouble with hashing password');
+						next(err);
 					});
 			}
 			else{
-				res.send("User already exists");
+				var err = new Error('User already exists');
+				err.status = 400;
+				next(err);
 			}
 		});
 	}
 	else{
-        console.log("invalid req credentials");
-        //res.send(err);
+        var err = new Error('Both password and username required.');
+		err.status = 400;
+		next(err);
 	}
 });
 
@@ -83,7 +86,7 @@ app.post('/api/register', (req, res) => {
 	4. Set cookie w/ session token
 	5. Send status
 */
-app.post('/api/login', (req, res)=>{
+app.post('/api/login', (req, res, next)=>{
 	if(req.body.email && req.body.password){
 		var login = req.body;
 		User.findOne({'email': login.email}, (err, existingUser)=>{
@@ -95,7 +98,9 @@ app.post('/api/login', (req, res)=>{
 							{$push: { 'sessionTokens': sessionToken }},
 							{new: true}, (err, newToken)=>{
 								if(err){
-									res.send("err");
+									var err = new Error('User doesn\'t exist or DB error');
+									err.status = 500;
+									next(err);
 								}
 								res.cookie('session-id',sessionToken, { maxAge: 900000});
 								res.json({
@@ -104,18 +109,30 @@ app.post('/api/login', (req, res)=>{
 								});
 							});
 					}//end of passwords match
+					else{
+						var err = new Error('Incorrect password');
+						err.status = 400;
+						next(err);
+					}
 				})
 				.catch((err)=>{
-					console.log("'error in comparing hashes");
+					var err = new Error('Error comparing hashed passwords');
+					err.status = 500;
+					next(err);
+
 				});
 			}
 			else{
-				console.log("User doesn't exist");
+				var err = new Error('User doesn\'t exist');
+				err.status = 400;
+				next(err);
 			}
 		});
 	}
 	else{
-		res.send({'error' : 'Must include both email and password to register'});
+		var err = new Error('Must include both email and password to register');
+		err.status = 400;
+		next(err);
 	}
 });
 
@@ -135,7 +152,7 @@ app.use((req, res, next)=>{
 	if(req.cookies['session-id']){
 		User.findOne({'sessionTokens': req.cookies['session-id']},(err, user)=>{
 			if(err || !user){
-				console.log("error - no user OR err");
+				next(err);
 			}
 			else{
 				req.user = user;
@@ -144,9 +161,9 @@ app.use((req, res, next)=>{
 		});
 	}
 	else{
-		//let err = new Error();
-		console.log("need to be logged in");
-		next();
+		var err = new Error('Unauthorized - please log in');
+		err.status(401);
+		next(err);
 	}
 });
 
@@ -158,7 +175,7 @@ app.use((req, res, next)=>{
 	2. Returns error if there is any
 	3. OR Returns list of venues objects mapped to include fields: ID, name, coordinates
 */
-app.get('/api/nearByVenues', (req,res)=>{
+app.get('/api/nearByVenues', (req,res, next)=>{
 	allVenuesDB.find({
   		'location': {
    			$nearSphere: {
@@ -171,7 +188,7 @@ app.get('/api/nearByVenues', (req,res)=>{
   		}
  	}, (err, venues) => {
  		if(err){
- 			console.log(err);
+ 			return next(err);
  		}
  		res.json({
  			'venues': venues.map((ele)=>{
@@ -196,7 +213,7 @@ app.get('/api/nearByVenues', (req,res)=>{
 	3. OR Updates user's visited venue array with the venue (lon, lat, name)
 	4. Returns error if any OR returns updated User 
 */
-app.post('/api/checkIn',(req,res)=>{
+app.post('/api/checkIn',(req,res, next)=>{
 	allVenuesDB.findOneAndUpdate(
 		{
 			$and: [
@@ -217,7 +234,7 @@ app.post('/api/checkIn',(req,res)=>{
 		{$push: {'checkedInUsers': req.user.email}},
 		(err, venue)=> {
 			if(err || !venue){
-				console.log(err);
+				next(err);
 			}
 			else{
 				User.findOneAndUpdate(
@@ -232,29 +249,10 @@ app.post('/api/checkIn',(req,res)=>{
 					},
 					(err, updatedUser)=>{
 						if(err || !updatedUser){
-							console.log(err);
+							next(err);
 						}
 						else{
-							console.log('Added to visited venues');
-							//console.log(req.user.visitedVenues);
-							if(req.user.visitedVenues.length>10){
-								helper.makeUnpluggRequest(user).then((resolve)=>{
-
-									console.log('in then');
-								});
-							}
-							else{
-								User.findOneAndUpdate(req.user_id,{'suggestedVenue': venue._id},{new: true},(err, updatedSuggested)=>{
-									if(err){
-										console.log(err);
-									}
-									else{
-										console.log('updated suggested venue');
-										console.log(updatedUser.suggestedVenue);
-										res.json({updatedUser});
-									}
-								});
-							}
+							res.json({updatedUser});
 						}
 
 					}
@@ -285,19 +283,24 @@ app.get('/api/popularVenues',(req,res)=>{
 					{"$sort": {"length": -1}},
 					{"$limit": 3}
 				],(err, sortedVenues)=>{
-					let mapped = sortedVenues.map((ele)=>{
-						let len = ele.checkedInUsers.length;
-						return {
-							id: ele._id,
-							'name': ele.name,
-							'longitude': ele.location.coordinates[0],
-							'latitude': ele.location.coordinates[1],
-							'numCheckedIn': len,
-							'checkedInUsers': ele.checkedInUsers
-						};
-					});
-					console.log('success');
-					res.json(mapped);
+					if(err){
+						next(err);
+					}
+					else{
+						let mapped = sortedVenues.map((ele)=>{
+							let len = ele.checkedInUsers.length;
+							return {
+								id: ele._id,
+								'name': ele.name,
+								'longitude': ele.location.coordinates[0],
+								'latitude': ele.location.coordinates[1],
+								'numCheckedIn': len,
+								'checkedInUsers': ele.checkedInUsers
+							};
+						});
+						//console.log('success');
+						res.json(mapped);
+					}
 			});
 });
 
@@ -311,7 +314,7 @@ app.get('/api/popularVenues',(req,res)=>{
 * Note: I returned the venue object rather than just an array with users
 	 so that the front-end can keep track of which users are at which venue
 */
-app.get('/api/nearByUsers',(req,res)=>{
+app.get('/api/nearByUsers',(req,res, next)=>{
 	allVenuesDB.find({
   		'location': {
    			$nearSphere: {
@@ -324,7 +327,7 @@ app.get('/api/nearByUsers',(req,res)=>{
   		}
  	}, (err, venues) => {
  		if(err){
- 			console.log(err);
+ 			next(err);
  		}
  		else{
  			let allUsers = venues.map((ele)=>{
@@ -341,25 +344,13 @@ app.get('/api/nearByUsers',(req,res)=>{
 });
 
 
-app.get('/api/suggestedVenue',(req,res)=>{
-	res.json({'suggestedVenue': req.user.suggestedVenue})
-});
-
-
-app.post('/api/unpluggWebhook', (req,res)=>{
-	console.log(res);
-	//something with the data? 
-});
-
-
-
 /*For Uploading Venues: 
 * Adds all venues from an array
 * Sends array of all objects added to DB when finished
 * To Note: need a bulk insert for bigger quantity of items, 
 	since small sample size - going with simple for loop.
 */
-app.get('/addAllTestVenues', (req,res)=>{
+app.get('/addAllTestVenues', (req,res, next)=>{
 	var allObjs = [];
 	for(let i=0;i<allRestaurants.length;i++){
 		var newVenue = new allVenuesDB({
@@ -370,7 +361,8 @@ app.get('/addAllTestVenues', (req,res)=>{
 			name: allRestaurants[i].name
 		}).save((err, venue) => {
 			if (err) {
-				console.log(err);
+				next(err);
+
 			}
 			else{
 				allObjs.push(venue);
@@ -383,18 +375,22 @@ app.get('/addAllTestVenues', (req,res)=>{
 });
 
 
+// catch 404 and forward to error handler
+app.use(function(req, res, next) {
+  var err = new Error('File Not Found');
+  err.status = 404;
+  next(err);
+});
 
- // Initialize the app
-
- // process.env.PORT lets the port be set by Heroku
-  // var server = app.listen(process.env.PORT || 8080, function () {
-  //   var port = server.address().port;
-  //   console.log("App now running on port", port);
-  // });
-
-
+//Error Handler:
+app.use(function(err, req, res, next) {
+  res.status(err.status || 500);
+  res.send({
+    message: err.message,
+    error: err
+  });
+});
 
 
 app.listen(8080);
-
 

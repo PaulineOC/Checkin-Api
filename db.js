@@ -18,7 +18,7 @@ var User = new mongoose.Schema({
       name: String
     }
   ],
-  suggestedVenue: String,
+  //suggestedVenue: String,
   sessionTokens: [String]
 });
 
@@ -39,5 +39,8 @@ Venue.index({ location: "2dsphere" });
 
 mongoose.model("VenueSchema", Venue);
 mongoose.model("UserSchema", User);
+
+
+//Setting up environment: 
 
 mongoose.connect('mongodb://localhost/example0');
