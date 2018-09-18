@@ -6,6 +6,7 @@ var helper = require('./helper.js');
 var bodyParser = require('body-parser');
 var uuidv4 = require('uuid/v4');
 var cookieParser = require('cookie-parser');
+var request = require('request');
 
 
 //Mongoose Models:
@@ -16,6 +17,13 @@ var allVenuesDB = mongoose.model('VenueSchema');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
+
+
+
+
+//Data
+var allRestaurantsObj = require('./smallRestaurants.js');
+var allRestaurants = allRestaurantsObj.listSmallRest;
 
 
 
@@ -38,7 +46,8 @@ app.post('/api/register', (req, res) => {
 							email: credentials.email,
 							password: hashed,
 							visitedVenues: [],
-							sessionTokens: []
+							suggestedVenue: '',
+							sessionTokens: [],
 						})
 						.save((err, user)=>{
 							if(err){
@@ -140,6 +149,7 @@ app.use((req, res, next)=>{
 	else{
 		//let err = new Error();
 		console.log("need to be logged in");
+		next();
 	}
 });
 
@@ -151,7 +161,7 @@ app.use((req, res, next)=>{
 	2. Returns error if there is any
 	3. OR Returns list of venues objects mapped to include fields: ID, name, coordinates
 */
-app.get('/api/NearByVenues', (req,res)=>{
+app.get('/api/nearByVenues', (req,res)=>{
 	allVenuesDB.find({
   		'location': {
    			$nearSphere: {
@@ -230,13 +240,29 @@ app.post('/api/checkIn',(req,res)=>{
 						else{
 							console.log('Added to visited venues');
 							//console.log(req.user.visitedVenues);
-							res.json({updatedUser});
+							if(req.user.visitedVenues.length>10){
+								helper.makeUnpluggRequest(user).then((resolve)=>{
+
+									console.log('in then');
+								});
+							}
+							else{
+								User.findOneAndUpdate(req.user_id,{'suggestedVenue': venue._id},{new: true},(err, updatedSuggested)=>{
+									if(err){
+										console.log(err);
+									}
+									else{
+										console.log('updated suggested venue');
+										console.log(updatedUser.suggestedVenue);
+										res.json({updatedUser});
+									}
+								});
+							}
 						}
 
 					}
 				);
 			 }
-		
 		}
 	);
 });
@@ -317,12 +343,60 @@ app.get('/api/nearByUsers',(req,res)=>{
  	});
 });
 
+
 app.get('/api/suggestedVenue',(req,res)=>{
-	
+	res.json({'suggestedVenue': req.user.suggestedVenue})
+});
+
+
+app.post('/api/unpluggWebhook', (req,res)=>{
+	console.log(res);
+	//something with the data? 
+});
+
+
+
+/*For Uploading Venues: 
+* Adds all venues from an array
+* Sends array of all objects added to DB when finished
+* To Note: need a bulk insert for bigger quantity of items, 
+	since small sample size - going with simple for loop.
+*/
+app.get('/addAllTestVenues', (req,res)=>{
+	var allObjs = [];
+	for(let i=0;i<allRestaurants.length;i++){
+		var newVenue = new allVenuesDB({
+			 location: {
+			    coordinates: allRestaurants[i].location.coordinates,
+			    type: "Point"
+			},
+			name: allRestaurants[i].name
+		}).save((err, venue) => {
+			if (err) {
+				console.log(err);
+			}
+			else{
+				allObjs.push(venue);
+				if(allObjs.length===allRestaurants.length){
+					res.send(allObjs);
+				}
+			}
+ 		});
+	}
 });
 
 app.listen(8080);
 
 
 
+// when they checkin -> 
+// if checkins > 10: call unplugg api with all the info
+// else: make suggestedVenue the last venue they visited aka the current
 
+
+// define new endpoint thats a post
+// make sure only unplugg can make requests to it
+// Then find nearest venue to unpluggs response and store it in suggestedVenue
+
+// In suggestedVenue
+// simply return suggestedVenue

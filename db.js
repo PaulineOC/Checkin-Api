@@ -18,10 +18,11 @@ var User = new mongoose.Schema({
       name: String
     }
   ],
+  suggestedVenue: String,
   sessionTokens: [String]
 });
 
-var Venues = new mongoose.Schema({
+var Venue = new mongoose.Schema({
   location: {
     coordinates: {
       type: [Number],
@@ -34,9 +35,9 @@ var Venues = new mongoose.Schema({
   checkedInUsers: [String]
 
 });
-Venues.index({ location: "2dsphere" });
+Venue.index({ location: "2dsphere" });
 
-mongoose.model("VenueSchema", Venues);
+mongoose.model("VenueSchema", Venue);
 mongoose.model("UserSchema", User);
 
-mongoose.connect('mongodb://localhost/test2');
+mongoose.connect('mongodb://localhost/example0');

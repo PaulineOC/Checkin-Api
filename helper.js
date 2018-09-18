@@ -2,6 +2,8 @@
 
 
 var bcrypt = require('bcrypt');
+var request = require('request');
+
 
 /*
 * Input:  string of input password, and how many salt rounds (rounds of hashing)
@@ -36,6 +38,9 @@ function comparePasswords(pswdAttmpt, currHash){
 		});
 	});
 }
+
+
+
 
 exports.hashPassword = hashPassword;
 exports.comparePasswords = comparePasswords;
