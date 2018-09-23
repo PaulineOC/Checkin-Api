@@ -1,4 +1,6 @@
 var mongoose = require('mongoose');
+mongoose.Promise = global.Promise;
+
 
 var User = new mongoose.Schema({
   email: {
@@ -43,4 +45,12 @@ mongoose.model("UserSchema", User);
 
 //Setting up environment: 
 
-mongoose.connect('mongodb://localhost/example0');
+// process.env.DATABASE_URL
+
+if(process.env.NODE_ENV == 'production'){
+  var dbconf = process.env.MONGODB_URI;
+}
+else{
+  var dbconf = 'mongodb://localhost/example';
+}
+mongoose.connect(dbconf);

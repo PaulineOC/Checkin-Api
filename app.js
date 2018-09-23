@@ -12,6 +12,8 @@ var request = require('request');
 //Mongoose Models:
 var User = mongoose.model('UserSchema');
 var allVenuesDB = mongoose.model('VenueSchema');
+mongoose.Promise = global.Promise;
+
 
 //Middleware
 app.use(bodyParser.json());
@@ -390,6 +392,7 @@ app.use(function(err, req, res, next) {
     error: err
   });
 });
+
 
 
 app.listen(8080);
