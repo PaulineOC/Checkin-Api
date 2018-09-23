@@ -1,4 +1,4 @@
-var bcrypt = require('bcrypt');
+var bcrypt = require('bcrypt-nodejs');
 var request = require('request');
 
 //Helper Functions
@@ -12,11 +12,14 @@ var request = require('request');
 */
 function hashPassword(inputPswd, saltRounds){
 	return new Promise((resolve, reject)=>{
-		bcrypt.hash(inputPswd,saltRounds, (err, hash)=>{
-			if(err){
+
+		bcrypt.genSalt(saltRounds, (salt)=>{
+			bcrypt.hash(inputPswd, salt,null, (err, hash)=>{
+				if(err){
 				reject(err);
-			}
-			resolve(hash);
+				}
+				resolve(hash);
+			});
 		});
 	});
 }
